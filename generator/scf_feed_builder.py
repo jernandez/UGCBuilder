@@ -10,14 +10,22 @@ from optparse import OptionParser
 # Nuts and bolts
 ###################################################################
 column_map = [
-	'ProductId',
 	'ReviewId',
-	'OverallRating', 
+	'SubmissionDate',
+	'OverallRating',
+	'TractionRating',
+	'DurabilityRating', 
+	'ComfortRating', 
+	'ReviewerName', 
+	'ReviewerId',
 	'ReviewTitle',
 	'ReviewSummary',
-	'SubmissionDate',
-	'ReviewerName', 
-	'ReviewerId'
+	'IPAddress',
+	'TireMake',
+	'TireModel',
+	'VehicleYear',
+	'VechicleModel',
+	'ProductId'
 ]
 
 def populateTags(parentTag, tagTitle, tagText):
@@ -37,11 +45,20 @@ def CheckForExistence(line, num, lineNum, errorFile):
 		result = False	
 	return result
 
-def parseLine (line, reviewDict):
-	#review_desc = line[4].encode('utf-8', 'strict')
+def parseLine (line, reviewDict, errorFile):
+
+	validColumns = True
 
 	for column in column_map:
-		reviewDict[column] = re.sub('\n\t', ' ', line[column_map.index(column)].encode('utf-8'))
+		try: 
+			reviewDict[column] = re.sub('\n\t', ' ', line[column_map.index(column)].encode('utf-8'))
+		except UnicodeDecodeError:
+			errorFile.write(str(line) + '\n')
+			validColumns = False
+	
+	if not validColumns: 
+		reviewDict = {}
+
 	return reviewDict
 		
 def generateFeed(options):
@@ -49,7 +66,7 @@ def generateFeed(options):
 	clientFile = open(options.input)
 	clientProductFeed = open(options.output, 'w')
 	errorFile = open('error.log', 'w')
-	reader = csv.reader(clientFile, delimiter="\t")
+	reader = csv.reader(clientFile, delimiter="|")
 
 	# Define Feed tag values
 	generateDateTime = time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime())
@@ -68,13 +85,15 @@ def generateFeed(options):
 	reviews = {}
 
 	# Loop through input, assuming first line is header
-	reader.next() 
+	#reader.next() 
 
 	for line in reader:
 		_review = {}
-		_review = parseLine(line, _review)
+		_review = parseLine(line, _review, errorFile)
 
-		if _review['ProductId'] not in reviews:
+		if not _review.keys():
+			continue
+		elif _review['ProductId'] not in reviews:
 			reviews[_review['ProductId']] = []
 			reviews[_review['ProductId']].append(_review)
 		else:
@@ -107,6 +126,13 @@ def generateFeed(options):
 			if review['OverallRating']:
 				ratingNode = SubElement(rNode, 'Rating')
 				ratingNode.text = review['OverallRating']
+
+			ratingsOnlyNode = SubElement(rNode, 'RatingsOnly')
+
+			if review['ReviewSummary'] or review['ReviewSummary']:
+				ratingsOnlyNode.text = 'false'
+			else:
+				ratingsOnlyNode.text = 'true'
 
 			userProfileNode = SubElement(rNode, 'UserProfileReference')
 			
