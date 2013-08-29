@@ -1,9 +1,11 @@
 #! /usr/bin/env python
 import time, sys, csv, re, datetime, string, random, subprocess
+import math
 #sys.path.append('/Users/javier.hernandez/wip/UGCBuilder')
 #from generator import mapping
 from xml.etree.ElementTree import *
 from optparse import OptionParser
+
 
 
 ###################################################################
@@ -45,7 +47,7 @@ def CheckForExistence(line, num, lineNum, errorFile):
 		result = False	
 	return result
 
-def parseLine (line, reviewDict, errorFile):
+def parseLine(line, reviewDict, errorFile):
 
 	validColumns = True
 
@@ -60,6 +62,17 @@ def parseLine (line, reviewDict, errorFile):
 		reviewDict = {}
 
 	return reviewDict
+
+def roundRating(rawRating):
+
+	decimalValue = math.modf(rawRating)[0]
+
+	if decimalValue >= .5:
+		roundedRating = math.ceil(rawRating)
+	else:
+		roundedRating = math.floor(rawRating)
+
+	return str(int(roundedRating))
 		
 def generateFeed(options):
 	# Access files
@@ -125,7 +138,7 @@ def generateFeed(options):
 			#ratings
 			if review['OverallRating']:
 				ratingNode = SubElement(rNode, 'Rating')
-				ratingNode.text = review['OverallRating']
+				ratingNode.text = roundRating(float(review['OverallRating']))
 
 			ratingsOnlyNode = SubElement(rNode, 'RatingsOnly')
 
